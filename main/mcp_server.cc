@@ -13,6 +13,7 @@
 #include "application.h"
 #include "display.h"
 #include "oled_display.h"
+#include "audio/mp3_player.h"
 #include "board.h"
 #include "settings.h"
 #include "lvgl_theme.h"
@@ -61,6 +62,21 @@ void McpServer::AddCommonTools() {
             auto codec = board.GetAudioCodec();
             codec->SetOutputVolume(properties["volume"].value<int>());
             return true;
+        });
+    
+    AddTool("self.audio_speaker.play_url",
+        "Download and play audio from a URL. Support MP3 format. "
+        "Use this tool when the user wants to play a song or audio file from a web URL.",
+        PropertyList({
+            Property("url", kPropertyTypeString)
+        }),
+        [](const PropertyList& properties) -> ReturnValue {
+            std::string url = properties["url"].value<std::string>();
+            ESP_LOGI("MCP", "Playing URL: %s", url.c_str());
+            if (Mp3Player::GetInstance().PlayUrl(url)) {
+                return "Playing audio from: " + url;
+            }
+            return "Failed to play audio";
         });
     
     auto backlight = board.GetBacklight();
