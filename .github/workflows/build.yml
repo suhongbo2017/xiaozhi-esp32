@@ -8,6 +8,12 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      board:
+        description: 'Board to build (leave empty for all)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -38,6 +44,18 @@ jobs:
           ALL_VARIANTS: ${{ steps.list.outputs.all_variants }}
         run: |
           EVENT_NAME="${{ github.event_name }}"
+
+          # workflow_dispatch: build specific board or all
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            BOARD="${{ github.event.inputs.board }}"
+            if [[ -n "$BOARD" ]]; then
+              FILTERED=$(echo "$ALL_VARIANTS" | jq -c --arg board "$BOARD" 'map(select(.board == $board or .full_name == $board))')
+              echo "variants=$FILTERED" >> $GITHUB_OUTPUT
+            else
+              echo "variants=$ALL_VARIANTS" >> $GITHUB_OUTPUT
+            fi
+            exit 0
+          fi
 
           # push 到 main 分支，编译全部变体
           if [[ "$EVENT_NAME" == "push" ]]; then
