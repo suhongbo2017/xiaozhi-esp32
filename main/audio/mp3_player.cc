@@ -7,6 +7,7 @@
 #include <freertos/task.h>
 #include <cstring>
 #include <vector>
+#include <memory>
 
 #define TAG "MP3_PLAYER"
 #define DECODE_BUF_SIZE (16 * 1024)
@@ -36,11 +37,10 @@ static void mp3_player_task(void *pvParameters) {
         return;
     }
     
-    // HTTP download
+    // HTTP download - http is a unique_ptr, automatically freed when out of scope
     auto http = network->CreateHttp(3);
     if (!http || !http->Open("GET", url.c_str())) {
         ESP_LOGE(TAG, "HTTP failed");
-        if (http) { http->Close(); delete http; }
         Mp3Player::GetInstance().Stop();
         vTaskDelete(NULL);
         return;
@@ -48,7 +48,6 @@ static void mp3_player_task(void *pvParameters) {
     
     if (http->GetStatusCode() != 200) {
         ESP_LOGE(TAG, "HTTP %d", http->GetStatusCode());
-        http->Close(); delete http;
         Mp3Player::GetInstance().Stop();
         vTaskDelete(NULL);
         return;
@@ -65,7 +64,6 @@ static void mp3_player_task(void *pvParameters) {
         read += ret;
     }
     http->Close();
-    delete http;
     
     if (read == 0) {
         Mp3Player::GetInstance().Stop();
